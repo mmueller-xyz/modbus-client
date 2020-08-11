@@ -43,7 +43,7 @@ type Config struct {
 func NewConfig() Config {
 	var c Config
 	c.SerialPort = "/dev/ttyUSB0"
-	c.BaudRate = 19200
+	c.BaudRate = 1
 	c.DataBits = 8
 	c.Parity = "N"
 	c.StopBits = 2
@@ -54,20 +54,11 @@ func NewConfig() Config {
 
 // Run starts the modbus client
 func Run(rQueue chan Request, conf Config) {
-	handler := setupHandler(conf)
-
-	err := handler.Connect()
-	defer handler.Close()
-
-	// exit if connection could not be established
-	if err != nil {
-		panic(err)
-	}
 
 	// main loop
 	for {
 		request := <-rQueue
-		handleRequest(request, handler)
+		handleRequest(request, conf)
 	}
 }
 
@@ -83,37 +74,47 @@ func setupHandler(c Config) *modbus.RTUClientHandler {
 	return h
 }
 
-func handleRequest(r Request, h *modbus.RTUClientHandler) {
+func handleRequest(r Request, conf Config) {
+
+	h := setupHandler(conf)
 	h.SlaveId = r.ServerID
+
+	err := h.Connect()
+
+	// exit if connection could not be established
+	if err != nil {
+		panic(err)
+	}
+
 	c := modbus.NewClient(h)
 	var res []byte
-	var err error
 
 	switch r.FCode {
-	case 0x01:
+	case 01:
 		res, err = c.ReadCoils(r.Address, r.Quantity)
 		break
-	case 0x02:
+	case 02:
 		res, err = c.ReadDiscreteInputs(r.Address, r.Quantity)
 		break
-	case 0x03:
+	case 03:
 		res, err = c.ReadHoldingRegisters(r.Address, r.Quantity)
 		break
-	case 0x04:
+	case 04:
 		res, err = c.ReadInputRegisters(r.Address, r.Quantity)
 		break
-	case 0x05:
+	case 05:
 		res, err = c.WriteSingleCoil(r.Address, r.Value)
 		break
-	case 0x06:
+	case 06:
 		res, err = c.WriteSingleRegister(r.Address, r.Value)
 		break
-	case 0x15:
+	case 15:
 		res, err = c.WriteMultipleCoils(r.Address, r.Quantity, r.Data)
 		break
-	case 0x16:
+	case 16:
 		res, err = c.WriteMultipleRegisters(r.Address, r.Quantity, r.Data)
 	}
+	h.Close()
 
 	r.Cb(res, err)
 }
