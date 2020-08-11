@@ -9,14 +9,24 @@ import (
 )
 
 // Request represents a request from http to modbus
+//
+// Function Code:
+//		 1	Read Coil
+// 		 2	Read Discrete Input
+// 		 3	Read Holding Registers
+// 		 4	Read Input Registers
+// 		 5	Write Single Coil
+// 		 6	Write Single Holding Register
+// 		15	Write Multiple Coils
+// 		16	Write Multiple Holding Registers
 type Request struct {
-	ServerID byte
-	FCode    uint16
-	Address  uint16
-	Data     []byte
-	Value    uint16
-	Quantity uint16
-	Cb       func(res []byte, err error)
+	ServerID byte                        // ID of the modbus client
+	FCode    uint16                      // Function Code
+	Address  uint16                      // Address of the Coil/Register
+	Data     []byte                      // Used for bulk writing of registers/coils
+	Value    uint16                      // Single Value to be written to a coil/register
+	Quantity uint16                      // Amount of Coils/Regiters to read from/write to
+	Cb       func(res []byte, err error) // Callback
 }
 
 // The Config struct sets up the serial configuration
