@@ -144,6 +144,7 @@ func main() {
 		defaultParity   = "N"
 		defaultStopBits = 2
 		defaultTimeout  = 1000
+		defaultLocal    = false
 	)
 
 	// Modbus Config
@@ -158,6 +159,7 @@ func main() {
 	flag.StringVar(&c.Parity, "p", defaultParity, "Parity: N - None, E - Even, O - Odd \n(The use of no parity requires 2 stop bits.)")
 	flag.IntVar(&c.StopBits, "s", defaultStopBits, "Stop bits: 1 or 2")
 	flag.IntVar(&timeout, "t", defaultTimeout, "Timeout in ms")
+	local := flag.Bool("l", false, "If the flag is set, the server is only avalilable from localhost.")
 	flag.Parse()
 	c.Timeout = time.Duration(timeout) * time.Millisecond
 
@@ -190,6 +192,11 @@ func main() {
 	go modhandler.Run(rQueue, c)
 	log.Printf("Started Modbus Client (%v, %v Bd, %v parity, %v stopbits, %v Timeout)\n", c.SerialPort, c.BaudRate, c.Parity, c.StopBits, c.Timeout)
 
-	log.Printf("Started http Server on Port %v\n", port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), router))
+	var address string
+	if *local {
+		address += "localhost"
+	}
+	address += fmt.Sprintf(":%v", port)
+	log.Printf("Started http Server %v\n", address)
+	log.Fatal(http.ListenAndServe(address, router))
 }
