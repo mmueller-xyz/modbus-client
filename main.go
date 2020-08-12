@@ -187,7 +187,7 @@ func main() {
 	router.HandleFunc("/api/v1/{sid:[0-9]+}/inputRegister/{adr:[0-9]+}", readIRegister).Methods("GET")
 
 	// Start Modbus Routine
-	go modhandler.Run(ch, c)
+	go modhandler.Run(rQueue, c)
 	log.Printf("Started Modbus Client (%v, %v Bd, %v parity, %v stopbits, %v Timeout)\n", c.SerialPort, c.BaudRate, c.Parity, c.StopBits, c.Timeout)
 
 	log.Printf("Started http Server on Port %v\n", port)
