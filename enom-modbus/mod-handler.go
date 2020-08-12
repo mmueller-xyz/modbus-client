@@ -2,7 +2,6 @@ package modhandler
 
 import (
 	"log"
-	"os"
 	"time"
 
 	modbus "github.com/goburrow/modbus"
@@ -40,10 +39,9 @@ type Config struct {
 }
 
 // NewConfig returns a default Config
-func NewConfig() Config {
-	var c Config
+func NewConfig() (c Config) {
 	c.SerialPort = "/dev/ttyUSB0"
-	c.BaudRate = 1
+	c.BaudRate = 19200
 	c.DataBits = 8
 	c.Parity = "N"
 	c.StopBits = 2
@@ -54,14 +52,21 @@ func NewConfig() Config {
 
 // Run starts the modbus client
 func Run(rQueue chan Request, conf Config) {
+	{ // check if serial device is valid
+		h := setupHandler(conf)
+		err := h.Connect()
 
-	// main loop
-	for {
-		request := <-rQueue
-		handleRequest(request, conf)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	for { // main loop
+		handleRequest(<-rQueue, conf) // blocks until request is made
 	}
 }
 
+// setupHandler converts our config to the modbus library's config
 func setupHandler(c Config) *modbus.RTUClientHandler {
 	h := modbus.NewRTUClientHandler(c.SerialPort)
 	h.BaudRate = c.BaudRate
@@ -69,27 +74,30 @@ func setupHandler(c Config) *modbus.RTUClientHandler {
 	h.Parity = c.Parity
 	h.StopBits = c.StopBits
 	h.Timeout = c.Timeout
-	h.Logger = log.New(os.Stdout, "test: ", log.LstdFlags)
+	// h.Logger = log.New(os.Stdout, "test: ", log.LstdFlags)
 
 	return h
 }
 
+// handleRequest is called when a request is made
 func handleRequest(r Request, conf Config) {
-
+	var res []byte
 	h := setupHandler(conf)
 	h.SlaveId = r.ServerID
 
 	err := h.Connect()
 
-	// exit if connection could not be established
+	// exit if serial device was not found
 	if err != nil {
-		panic(err)
+		res = []byte{0x1} // indicate, that the error is because of the serial dev.
+		r.Cb(res, err)
+		h.Close()
+		return
 	}
 
 	c := modbus.NewClient(h)
-	var res []byte
 
-	switch r.FCode {
+	switch r.FCode { // call method corresponding to function code
 	case 01:
 		res, err = c.ReadCoils(r.Address, r.Quantity)
 		break
@@ -116,5 +124,5 @@ func handleRequest(r Request, conf Config) {
 	}
 	h.Close()
 
-	r.Cb(res, err)
+	r.Cb(res, err) // call the callback function
 }

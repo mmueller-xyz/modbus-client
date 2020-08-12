@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -13,8 +15,9 @@ import (
 	modhandler "gitlab.com/enomics/modbus-client/enom-modbus"
 )
 
-var ch = make(chan modhandler.Request)
+var rQueue = make(chan modhandler.Request)
 
+// getParams extracts all Parameters of a request from the URL
 func getParams(r *http.Request) (rd modhandler.Request) {
 	{
 		asd, err := strconv.ParseUint(mux.Vars(r)["adr"], 10, 16)
@@ -54,52 +57,122 @@ func getParams(r *http.Request) (rd modhandler.Request) {
 	return
 }
 
-func makeRequest(w http.ResponseWriter, r *http.Request, FCode uint16) {
-	rd := getParams(r)
-	rd.FCode = FCode
+// make Request forms the callback function and sends the request into the queue
+func makeRequest(w http.ResponseWriter, r *http.Request, rd modhandler.Request) {
+	log.Println(r.URL)
 	var sync = make(chan bool)
 
+	// create callback method
 	rd.Cb = func(res []byte, err error) {
 		if err != nil {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			fmt.Fprintln(w, err)
-
-		} else {
+			if res != nil { // Serial dev. not found
+				w.WriteHeader(http.StatusInternalServerError)
+				fmt.Fprintln(w, "Serial Device not Found!")
+			} else { // modbus malformed or timeout
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				fmt.Fprintln(w, err)
+			}
+		} else { // modbus response recieved
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprintf(w, "%s", hex.EncodeToString(res))
 		}
-		sync <- true
+		sync <- true // needed to block method
 	}
-	ch <- rd
-	<-sync
+	rQueue <- rd // put request into queue
+	<-sync       // blocks until modbus response was recieved and http response was written
 }
 
+// FCode 01
 func readCoil(w http.ResponseWriter, r *http.Request) {
-	makeRequest(w, r, 1)
-}
-func writeCoil(w http.ResponseWriter, r *http.Request) {
-	makeRequest(w, r, 5)
-}
-func readInput(w http.ResponseWriter, r *http.Request) {
-	makeRequest(w, r, 2)
+	rd := getParams(r)
+	rd.FCode = 1
+	makeRequest(w, r, rd)
 }
 
+// FCode 05
+func writeCoil(w http.ResponseWriter, r *http.Request) {
+	rd := getParams(r)
+	rd.FCode = 5
+	if rd.Quantity > 1 {
+		rd.FCode = 15
+	}
+	makeRequest(w, r, rd)
+}
+
+// FCode 02
+func readInput(w http.ResponseWriter, r *http.Request) {
+	rd := getParams(r)
+	rd.FCode = 2
+	makeRequest(w, r, rd)
+}
+
+// FCode 03
 func readHRegister(w http.ResponseWriter, r *http.Request) {
-	makeRequest(w, r, 3)
+	rd := getParams(r)
+	rd.FCode = 3
+	makeRequest(w, r, rd)
 }
+
+// FCode 06
 func writeHRegister(w http.ResponseWriter, r *http.Request) {
-	makeRequest(w, r, 6)
+	rd := getParams(r)
+	rd.FCode = 6
+	if rd.Quantity > 1 {
+		rd.FCode = 16
+	}
+	makeRequest(w, r, rd)
 }
+
+// FCode 04
 func readIRegister(w http.ResponseWriter, r *http.Request) {
-	makeRequest(w, r, 4)
+	rd := getParams(r)
+	rd.FCode = 4
+	makeRequest(w, r, rd)
+}
+
+func usage() {
+	fmt.Printf("Usage: %s [optional arguments] serialDevice\n", os.Args[0])
+	flag.PrintDefaults()
 }
 
 func main() {
 
+	const (
+		defaultPort     = 8080
+		defaultSPort    = ""
+		defaultBaudRate = 9600
+		defaultParity   = "N"
+		defaultStopBits = 2
+		defaultTimeout  = 1000
+	)
+
 	// Modbus Config
-	c := modhandler.NewConfig()
-	c.BaudRate = 2400
-	c.Timeout = 5 * time.Second
+	var c modhandler.Config
+	var timeout int
+	var port int
+
+	// setup commandline arguments
+	flag.Usage = usage
+	flag.IntVar(&port, "P", defaultPort, "Port")
+	flag.IntVar(&c.BaudRate, "b", defaultBaudRate, "Baud Rate ")
+	flag.StringVar(&c.Parity, "p", defaultParity, "Parity: N - None, E - Even, O - Odd \n(The use of no parity requires 2 stop bits.)")
+	flag.IntVar(&c.StopBits, "s", defaultStopBits, "Stop bits: 1 or 2")
+	flag.IntVar(&timeout, "t", defaultTimeout, "Timeout in ms")
+	flag.Parse()
+	c.Timeout = time.Duration(timeout) * time.Millisecond
+
+	// check if parity argument is correct
+	if c.Parity != "N" && c.Parity != "E" && c.Parity != "O" {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	// check if serial port was given
+	if flag.NArg() == 0 {
+		flag.Usage()
+		os.Exit(1)
+	}
+	c.SerialPort = flag.Args()[0]
 
 	// Http config
 	router := mux.NewRouter().StrictSlash(true)
@@ -113,8 +186,10 @@ func main() {
 
 	router.HandleFunc("/api/v1/{sid:[0-9]+}/inputRegister/{adr:[0-9]+}", readIRegister).Methods("GET")
 
-	// Start Concurrent goroutines
+	// Start Modbus Routine
 	go modhandler.Run(ch, c)
+	log.Printf("Started Modbus Client (%v, %v Bd, %v parity, %v stopbits, %v Timeout)\n", c.SerialPort, c.BaudRate, c.Parity, c.StopBits, c.Timeout)
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Printf("Started http Server on Port %v\n", port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), router))
 }
