@@ -2,6 +2,7 @@ package modhandler
 
 import (
 	"log"
+	"os"
 	"time"
 
 	modbus "github.com/goburrow/modbus"
@@ -26,63 +27,43 @@ type Request struct {
 	Value    uint16                      // Single Value to be written to a coil/register
 	Quantity uint16                      // Amount of Coils/Regiters to read from/write to
 	Cb       func(res []byte, err error) // Callback
+	Conf     Config                      // On-The-Fly config, only for current request
 }
 
 // The Config struct sets up the serial configuration
 type Config struct {
-	SerialPort string
-	BaudRate   int
-	DataBits   int
-	Parity     string
-	StopBits   int
-	Timeout    time.Duration
-}
-
-// NewConfig returns a default Config
-func NewConfig() (c Config) {
-	c.SerialPort = "/dev/ttyUSB0"
-	c.BaudRate = 19200
-	c.DataBits = 8
-	c.Parity = "N"
-	c.StopBits = 2
-	c.Timeout = 1 * time.Second
-
-	return c
+	SerialPort string `json:"serialPort"` // serialdevice
+	BaudRate   int    `json:"baudRate"`   // Baud Rate
+	DataBits   int    `json:"dataBits"`   // Data bits: 5, 6, 7 or 8
+	Parity     string `json:"parity"`     // Parity: N - None, E - Even, O - Odd
+	StopBits   int    `json:"stopBits"`   // Stop bits: 1 or 2
+	Timeout    int    `json:"timeout"`    // Timeout in ms
 }
 
 // Run starts the modbus client
-func Run(rQueue chan Request, conf Config) {
-	{ // check if serial device is valid
-		h := setupHandler(conf)
-		err := h.Connect()
-
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
+func Run(rQueue chan Request) {
 	for { // main loop
-		handleRequest(<-rQueue, conf) // blocks until request is made
+		handleRequest(<-rQueue) // blocks until request is made
 	}
 }
 
 // setupHandler converts our config to the modbus library's config
-func setupHandler(c Config) *modbus.RTUClientHandler {
-	h := modbus.NewRTUClientHandler(c.SerialPort)
-	h.BaudRate = c.BaudRate
-	h.DataBits = c.DataBits
-	h.Parity = c.Parity
-	h.StopBits = c.StopBits
-	h.Timeout = c.Timeout
-	// h.Logger = log.New(os.Stdout, "test: ", log.LstdFlags)
+func setupHandler(r Request) *modbus.RTUClientHandler {
+	h := modbus.NewRTUClientHandler(r.Conf.SerialPort)
+	h.BaudRate = r.Conf.BaudRate
+	h.DataBits = r.Conf.DataBits
+	h.Parity = r.Conf.Parity
+	h.StopBits = r.Conf.StopBits
+	h.Timeout = time.Duration(r.Conf.Timeout) * time.Millisecond
+	h.Logger = log.New(os.Stdout, "", log.LstdFlags)
 
 	return h
 }
 
 // handleRequest is called when a request is made
-func handleRequest(r Request, conf Config) {
+func handleRequest(r Request) {
 	var res []byte
-	h := setupHandler(conf)
+	h := setupHandler(r)
 	h.SlaveId = r.ServerID
 
 	err := h.Connect()
