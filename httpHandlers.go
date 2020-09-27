@@ -10,8 +10,23 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	modhandler "gitlab.com/enomics/modbus-client/enom-modbus"
 )
+
+func registerEndpoints(router *mux.Router) *mux.Router {
+	router.HandleFunc("/api/v1/{sid:[0-9]+}/coil/{adr:[0-9]+}", readCoil).Methods("GET")
+	router.HandleFunc("/api/v1/{sid:[0-9]+}/coil/{adr:[0-9]+}", writeCoil).Methods("POST")
+
+	router.HandleFunc("/api/v1/{sid:[0-9]+}/discreteInput/{adr:[0-9]+}", readInput).Methods("GET")
+
+	router.HandleFunc("/api/v1/{sid:[0-9]+}/holdingRegister/{adr:[0-9]+}", readHRegister).Methods("GET")
+	router.HandleFunc("/api/v1/{sid:[0-9]+}/holdingRegister/{adr:[0-9]+}", writeHRegister).Methods("POST")
+
+	router.HandleFunc("/api/v1/{sid:[0-9]+}/inputRegister/{adr:[0-9]+}", readIRegister).Methods("GET")
+
+	router.HandleFunc("/api/v1/config", getConfig).Methods("GET")
+	router.HandleFunc("/api/v1/config", setConfig).Methods("POST")
+	return router
+}
 
 // FCode 01
 func readCoil(w http.ResponseWriter, r *http.Request) {
@@ -20,7 +35,7 @@ func readCoil(w http.ResponseWriter, r *http.Request) {
 	makeRequest(w, r, rd)
 }
 
-// FCode 05
+// FCode 05/15
 func writeCoil(w http.ResponseWriter, r *http.Request) {
 	rd := getParams(r)
 	rd.FCode = 5
@@ -44,7 +59,7 @@ func readHRegister(w http.ResponseWriter, r *http.Request) {
 	makeRequest(w, r, rd)
 }
 
-// FCode 06
+// FCode 06/16
 func writeHRegister(w http.ResponseWriter, r *http.Request) {
 	rd := getParams(r)
 	rd.FCode = 6
@@ -78,7 +93,7 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 func setConfig(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%v %v", r.Method, r.URL)
 
-	var nConf modhandler.Config
+	var nConf Config
 	err := json.NewDecoder(r.Body).Decode(&nConf)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -113,7 +128,7 @@ func setConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 // getParams extracts all Parameters of a request from the URL
-func getParams(r *http.Request) (rd modhandler.Request) {
+func getParams(r *http.Request) (rd Request) {
 	{ // Parse register address
 		asd, err := strconv.ParseUint(mux.Vars(r)["adr"], 10, 16)
 		if err != nil {
@@ -199,7 +214,7 @@ func getParams(r *http.Request) (rd modhandler.Request) {
 }
 
 // make Request forms the callback function and sends the request into the queue
-func makeRequest(w http.ResponseWriter, r *http.Request, rd modhandler.Request) {
+func makeRequest(w http.ResponseWriter, r *http.Request, rd Request) {
 	log.Printf("%v %v", r.Method, r.URL)
 	var sync = make(chan bool)
 

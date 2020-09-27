@@ -1,2 +1,3 @@
 ./modbus-client*
 .vscode/*
+.idea/*

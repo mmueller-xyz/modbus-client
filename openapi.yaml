@@ -1,0 +1,320 @@
+openapi: 3.0.0
+info:
+  title: HTTP modbusRTU API
+  description: HTTP modbusRTU API
+  version: 1.0.0
+servers:
+  - url: 'http://localhost:8080/api/v1'
+    variables: {}
+    description: Localhost
+    
+paths:
+  '/config':
+    get:
+      summary: get current modbus configuration
+      responses:
+        '200':
+          description: current default configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModbusConfig'
+    post:
+      summary: set new permanent modbus configuration
+      requestBody:
+        content:
+          applicaion/json:
+            schema:
+              $ref: '#/components/schemas/ModbusConfig'
+      responses:
+        '200':
+          description: current default configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModbusConfig'
+        '500':
+          description: error in setting default configuration
+          content:
+            text/plain:
+              schema:
+                type: string
+  '/{sid}/coil/{adr}':
+    get:
+      summary: read one or more coils
+      parameters:
+        - $ref: '#/components/parameters/sid'
+        - $ref: '#/components/parameters/adr'
+        - $ref: '#/components/parameters/Quantity'
+        - $ref: '#/components/parameters/baudRate'
+        - $ref: '#/components/parameters/dataBits'
+        - $ref: '#/components/parameters/parity'
+        - $ref: '#/components/parameters/stopBits'
+        - $ref: '#/components/parameters/timeout'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulModbusResponse'
+        '422':
+          $ref: '#/components/responses/UnSuccessfulModbusResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      summary: write one or more coils
+      parameters:
+        - $ref: '#/components/parameters/sid'
+        - $ref: '#/components/parameters/adr'
+        - $ref: '#/components/parameters/Quantity'
+        - $ref: '#/components/parameters/Data'
+        - $ref: '#/components/parameters/Value'
+        - $ref: '#/components/parameters/baudRate'
+        - $ref: '#/components/parameters/dataBits'
+        - $ref: '#/components/parameters/parity'
+        - $ref: '#/components/parameters/stopBits'
+        - $ref: '#/components/parameters/timeout'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulModbusResponse'
+        '422':
+          $ref: '#/components/responses/UnSuccessfulModbusResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  '/{sid}/discreteInput/{adr}':
+    get:
+      summary: read one or more discrete input registers
+      parameters:
+        - $ref: '#/components/parameters/sid'
+        - $ref: '#/components/parameters/adr'
+        - $ref: '#/components/parameters/Quantity'
+        - $ref: '#/components/parameters/baudRate'
+        - $ref: '#/components/parameters/dataBits'
+        - $ref: '#/components/parameters/parity'
+        - $ref: '#/components/parameters/stopBits'
+        - $ref: '#/components/parameters/timeout'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulModbusResponse'
+        '422':
+          $ref: '#/components/responses/UnSuccessfulModbusResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  '/{sid}/holdingRegister/{adr}':
+    get:
+      summary: read one or more holding registers
+      parameters:
+        - $ref: '#/components/parameters/sid'
+        - $ref: '#/components/parameters/adr'
+        - $ref: '#/components/parameters/Quantity'
+        - $ref: '#/components/parameters/baudRate'
+        - $ref: '#/components/parameters/dataBits'
+        - $ref: '#/components/parameters/parity'
+        - $ref: '#/components/parameters/stopBits'
+        - $ref: '#/components/parameters/timeout'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulModbusResponse'
+        '422':
+          $ref: '#/components/responses/UnSuccessfulModbusResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      summary: write one or more holding registers
+      parameters:
+        - $ref: '#/components/parameters/sid'
+        - $ref: '#/components/parameters/adr'
+        - $ref: '#/components/parameters/Quantity'
+        - $ref: '#/components/parameters/Data'
+        - $ref: '#/components/parameters/Value'
+        - $ref: '#/components/parameters/baudRate'
+        - $ref: '#/components/parameters/dataBits'
+        - $ref: '#/components/parameters/parity'
+        - $ref: '#/components/parameters/stopBits'
+        - $ref: '#/components/parameters/timeout'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulModbusResponse'
+        '422':
+          $ref: '#/components/responses/UnSuccessfulModbusResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  '/{sid}/inputRegister/{adr}':
+    get:
+      summary: read one or more input registers
+      parameters:
+        - $ref: '#/components/parameters/sid'
+        - $ref: '#/components/parameters/adr'
+        - $ref: '#/components/parameters/Quantity'
+        - $ref: '#/components/parameters/baudRate'
+        - $ref: '#/components/parameters/dataBits'
+        - $ref: '#/components/parameters/parity'
+        - $ref: '#/components/parameters/stopBits'
+        - $ref: '#/components/parameters/timeout'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessfulModbusResponse'
+        '422':
+          $ref: '#/components/responses/UnSuccessfulModbusResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+components:
+  responses:
+    SuccessfulModbusResponse:
+      description: Successful operation
+      headers:
+        config:
+          description: Base64 encoding of modbus config
+          schema:
+            type: string
+      content:
+        text/plain:
+          schema:
+            $ref: '#/components/schemas/SuccessfulModbusResponse'
+    UnSuccessfulModbusResponse:
+      description: Modbuss error
+      headers:
+        config:
+          description: Base64 encoding of modbus config
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UnSuccessfulModbusResponse'
+    ServerError:
+      description: Server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  parameters:
+    sid:
+      name: sid
+      description: Slave ID
+      in: path
+      required: true
+      schema:
+        type: number
+    adr:
+      name: adr
+      description: Address of the coil/register
+      in: path
+      required: true
+      schema:
+        type: integer
+    Data:
+      name: Data
+      description: Data to be written to multiple coils/registers
+      in: query
+      required: false
+      schema:
+        type: string
+    Value:
+      name: Value
+      description: Data to be written to Single coil/register
+      in: query
+      required: false
+      schema:
+        type: integer
+        format: uint16
+    Quantity:
+      name: Quantity
+      description: Amount of coils/registers to read/write from/to
+      in: query
+      required: false
+      schema:
+        type: integer
+        format: uint16
+    serialPort:
+      name: serialPort
+      description: tempoary modbus serial port
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/serialPort'
+    baudRate:
+      name: baudRate
+      description: tempoary modbus baud rate
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/baudRate'
+    dataBits:
+      name: dataBits
+      description: tempoary modbus baud rate
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/dataBits'
+    parity:
+      name: parity
+      description: tempoary modbus parity bit
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/parity'
+    stopBits:
+      name: stopBits
+      description: tempoary modbus stop bits
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/stopBits'
+    timeout:
+      name: timeout
+      description: tempoary serial port timeout
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/timeout'
+  schemas:
+    serialPort:
+      type: string
+      example: /dev/ttyUSB0
+    baudRate:
+      example: 19200
+      type: integer
+    dataBits:
+      type: integer
+      enum:
+        - 5
+        - 6
+        - 7
+        - 8
+    parity:
+      type: string
+      enum:
+        - 'N'
+        - E
+        - O
+      description: '"N" - None, "E" - Even, "O" - Odd'
+    stopBits:
+      type: integer
+      enum:
+        - 1
+        - 2
+    timeout:
+      description: serial timeout in milliseconds
+      type: integer
+    ModbusConfig:
+      type: object
+      properties:
+        serialPort:
+          $ref: '#/components/schemas/serialPort'
+        baudRate:
+          $ref: '#/components/schemas/baudRate'
+        dataBits:
+          $ref: '#/components/schemas/dataBits'
+        parity:
+          $ref: '#/components/schemas/parity'
+        stopBits:
+          $ref: '#/components/schemas/stopBits'
+        timeout:
+          $ref: '#/components/schemas/timeout'
+    SuccessfulModbusResponse:
+      type: string
+      format: bytes
+      description: Hexadecimal response from Client with 2 Byte block size
+      example: ff00
+    UnSuccessfulModbusResponse:
+      type: string
+    Error:
+      type: string
