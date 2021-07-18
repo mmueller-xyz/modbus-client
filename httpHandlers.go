@@ -154,7 +154,7 @@ func getParams(r *http.Request) (rd Request) {
 	}
 
 	{ // Parse 2 value Bytes
-		asd, _ := strconv.Atoi(r.URL.Query().Get("Value"))
+		asd, _ := strconv.ParseUint(r.URL.Query().Get("Value"), 0, 64)
 		rd.Value = uint16(asd)
 	}
 
