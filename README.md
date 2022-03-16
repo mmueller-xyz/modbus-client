@@ -26,7 +26,7 @@ Usage: ./modbus-client [optional arguments] serialDevice
         serial timeout in ms (default 1000)
 ```
 
-All Modbus Settings can be set after starting the server using the `\config` endpoint or temporary settings for a single request can be set using the query parameters.
+All Modbus Settings can be set after starting the server using the `/config` endpoint or temporary settings for a single request can be set using the query parameters.
 
 ## HTTP endpoints
 The endpoints are described in the following yaml file:
