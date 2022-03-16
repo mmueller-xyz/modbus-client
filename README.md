@@ -1,5 +1,5 @@
 # Modbus Client
-This Modbus Client serves as a Middleware, translating HTTP requests to ModbusRTU serial requests. In oparamser to maximize serial usage, a queue is used to keep the serial worker always occupied.
+This Modbus Client serves as a Middleware, translating HTTP requests to ModbusRTU serial requests. In order to maximize serial usage, a queue is used to keep the serial worker always occupied.
 
 # Dependencies
 ```shell script
@@ -27,6 +27,9 @@ Usage: ./modbus-client [optional arguments] serialDevice
 ```
 
 ## HTTP endpoints
+The endpoints are described in the following yaml file:
+
 [openapi.yaml](./openapi.yaml)
+
 ### root
 `/api/v1`
