@@ -21,5 +21,8 @@ bin/modbus-client-linux-arm64: src/main.go
 bin/modbus-client-linux-armv7: src/main.go
 	cd src; GOOS=linux GOARCH=arm GOARM=7 go build -o ../$@
 
+bin/openapi.html: openapi.yaml
+	openapi-generator generate -i $< -g html -o ./bin/
+
 run:
 	go run src/
